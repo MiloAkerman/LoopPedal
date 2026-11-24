@@ -1,4 +1,8 @@
 #pragma once
+#include <cstdint>
+
+extern volatile bool flag_down;
+extern volatile bool flag_held;
 
 void InitButtons();
 bool Button1Pressed();
