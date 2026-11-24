@@ -1,73 +1,59 @@
 #include "daisy_seed.h"
-#include "daisysp.h"
 
 using namespace daisy;
 
 DaisySeed hardware;
-daisysp::Oscillator oscillator;
 
-// Shared with the main loop; printing stays outside the audio interrupt.
-volatile int input_peak_per_mille = 0;
-
-enum class AudioTest
+enum class LoopState
 {
-    Tone,              // Generate a tone on both outputs; inputs are ignored.
-    StereoPassthrough, // Input 1 -> output 1; input 2 -> output 2.
-    MonoPassthrough,   // Input 1 -> both outputs (useful for a mono pedal).
+    Idle,
+    Recording,
+    Playing,
 };
 
-// Change this mode, rebuild, and flash to run each wiring test.
-constexpr AudioTest kTest = AudioTest::MonoPassthrough;
+// Audio callback owns the state. Button events will drive transitions later.
+LoopState loop_state = LoopState::Idle;
+
+float ProcessSample(float input)
+{
+    switch(loop_state)
+    {
+        case LoopState::Idle:
+            // Monitor input while waiting for a recording request.
+            return input;
+        case LoopState::Recording:
+            // TODO: Store input in the loop buffer and transition when finished.
+            return input;
+        case LoopState::Playing:
+            // TODO: Read and wrap the recorded loop's playback position.
+            return 0.0f;
+    }
+    return 0.0f;
+}
 
 void AudioCallback(AudioHandle::InputBuffer  in,
                    AudioHandle::OutputBuffer out,
                    size_t                    size)
 {
-    float input_peak = 0.0f;
+    // TODO: Consume button events here to update loop_state.
     for(size_t i = 0; i < size; ++i)
     {
-        const float magnitude = in[0][i] < 0.0f ? -in[0][i] : in[0][i];
-        if(magnitude > input_peak)
-            input_peak = magnitude;
-
-        switch(kTest)
-        {
-            case AudioTest::Tone:
-            {
-                const float sample = oscillator.Process();
-                out[0][i] = sample;
-                out[1][i] = sample;
-                break;
-            }
-            case AudioTest::StereoPassthrough:
-                out[0][i] = in[0][i];
-                out[1][i] = in[1][i];
-                break;
-            case AudioTest::MonoPassthrough:
-                out[0][i] = in[0][i] * 70.0f;
-                out[1][i] = in[0][i] * 70.0f;
-                break;
-        }
+        const float sample = ProcessSample(in[0][i]);
+        out[0][i] = sample;
+        out[1][i] = sample;
     }
-    input_peak_per_mille = static_cast<int>(input_peak * 1000.0f);
 }
 
 int main(void)
 {
     hardware.Configure();
     hardware.Init();
-    hardware.StartLog();
-
-    oscillator.Init(hardware.AudioSampleRate());
-    oscillator.SetWaveform(daisysp::Oscillator::WAVE_SQUARE);
-    oscillator.SetFreq(440.0f);
-    oscillator.SetAmp(0.99f);
-
+    hardware.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_48KHZ);
     hardware.StartAudio(AudioCallback);
 
     for(;;)
     {
-        hardware.PrintLine("Input 1 block peak: %d / 1000", input_peak_per_mille);
-        System::Delay(100);
+        // TODO: Poll/debounce buttons and publish events to the audio callback.
+        System::Delay(1);
     }
 }

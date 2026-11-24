@@ -1,8 +1,12 @@
-# Project Name
-TARGET = LoopPedal
+# Default firmware. Use TARGET=AudioTest to build the hardware tests instead.
+TARGET ?= LoopPedal
+
+ifneq ($(TARGET),$(filter $(TARGET),LoopPedal AudioTest))
+$(error TARGET must be LoopPedal or AudioTest)
+endif
 
 # Sources
-CPP_SOURCES = LoopPedal.cpp 
+CPP_SOURCES = $(TARGET).cpp
 
 # Library Locations
 LIBDAISY_DIR = ../../libDaisy
