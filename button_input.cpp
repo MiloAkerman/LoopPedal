@@ -59,7 +59,7 @@ void InitButtons()
     TimerHandle::Config cfg;                             // NEW
     cfg.periph     = TimerHandle::Config::Peripheral::TIM_5;  // NEW
     cfg.enable_irq = true;                               // NEW
-    cfg.period     = System::GetPClk2Freq() / 100;      // NEW: 1 ms
+    cfg.period     = System::GetPClk2Freq() / 100;      // NEW: 10 ms
     buttonTimer.Init(cfg);                               // NEW
     buttonTimer.SetCallback(ButtonISR);                  // NEW
     buttonTimer.Start();                                 // NEW
